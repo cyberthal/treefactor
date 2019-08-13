@@ -1,0 +1,141 @@
+#+TITLE: treesort
+
+#+PROPERTY: LOGGING nil
+
+# Note: This readme works with the org-make-toc <https://github.com/alphapapa/org-make-toc> package, which automatically updates the table of contents.
+
+file:https://melpa.org/packages/package-name-badge.svg file:https://stable.melpa.org/packages/package-name-badge.svg
+
+Treesort moves text and files through the directory tree.
+
+* Contents                                                         :noexport:
+:PROPERTIES:
+:TOC:      this
+:END:
+  -  Commentary
+  -  Installation
+  -  Usage
+  -  Changelog
+  -  Credits
+  -  Development
+  -  License
+
+* Commentary
+
+ Treesort's main command is ts-throw. It moves text or files from the current window to a target in the next window. A second function, ts-throw-up, moves text or files up one directory level. You can throw directories the same as files.
+
+ When you throw a file to a directory, ts-throw creates a child directory <target-directory>/0-Inbox/ and puts the file there. This makes it easy to remember which files are new arrivals.
+
+ When you throw text to a directory, ts-throw creates a file Inbox.org. Lots of these files get created during a filing session. You can quickly delete them with ts-delete-this-buffer-and-file.
+
+ Treesort can rapidly change the directory tree structure of your notes. It helps to have some links that won't break when paths change. Use ts-dired-zinks to create a file with an org-id link in it.
+
+ ts-throw can throw text into existing files or outlines. You can duplicate a heading to another window with ts-duplicate-heading-to-other-window.
+
+ When you throw text to an outline, ts-throw believes that the parent heading is at the top of the visible region. It will only throw to direct children of the parent. You should narrow appropriately before throwing.
+
+ When you throw text to a file, ts-throw puts the text at the bottom. EXCEPT when the file already has a level-1 heading. Then ts-throw assumes this is a polished document, not an inbox file. ts-throw worries you will forget about text appended to polished documents. So it prepends the text before the level-1 headline, where it will stick out like a sore thumb.
+
+ ts-throw assumes that most headings you file will have four or more stars. Why? Imagine you are throwing headings to an outline. The level-1 heading is the document title. The level-2 headings are categories. The level-3 headings are subcategories. The level-4 headings are topics. Outlines become unwieldy when they get too deep, at which point it's better to create more files and directories to spread the load.
+
+ ts-throw only imposes this opinion on you in one way: it creates Inbox.org files with a "*** offset" at the top. You can still file level-5 headings, but they might "vanish" if you accidentally file a level-4 heading that folds appended level-5 headings beneath it. You can also file level-3 headings, although they won't be children of the "offset" heading, and might unexpectedly fold appended level-4 headings. I recommend that you convert headings to level 4 for transport, and then resize them at their destination.
+
+ The last text thrown is saved in the variable ts-object-text until the Emacs session ends. Text is not saved to the kill ring.
+
+* Installation
+:PROPERTIES:
+:TOC:      0
+:END:
+
+** MELPA
+
+If you installed from MELPA, you're done.  Just run one of the commands below.
+
+** Manual
+
+ Put this file in your load-path, and put this in your init
+ file: treesort.el
+
+  #+BEGIN_SRC elisp
+(require 'treesort)
+  #+END_SRC
+
+* Usage
+:PROPERTIES:
+:TOC:      0
+:END:
+
+ Run one of these commands:
+
+ `ts-throw' throw text/files to the next window
+
+ `ts-throw-up' throw text/files one directory up
+
+ `ts-delete-this-buffer-and-file' self-explanatory
+
+ `ts-store-link-fold-drawer' store an org link and hide the drawer
+
+ `ts-dired-zinks' store an org link in a file, titled with relative path
+
+ `ts-duplicate-heading-to-other-window' self-explanatory
+
+** Tips
+
+ Use org-id for global link IDs that are not path-dependent.
+
+ Treesort encourages many org files in deeply nested directories. This can make it challenging to construct an org-agenda files list. See here to load org agenda files recursively: https://stackoverflow.com/questions/17215868/recursively-adding-org-files-in-a-top-level-directory-for-org-agenda-files-take
+
+ It also helps to have a function that refreshes your org agenda file list, if you've altered paths in that directory.
+
+ I recommend configuring Dired to sort directories before files. Where possible, capitalize files and directories. This makes it easy to target them with isearch in a few keystrokes. Omit extensions to reduce visual clutter.
+
+ Treesort filing is fast. Think with your fingers, not your brain. You can always redo it later.
+
+***  My keybindings
+
+ By putting the following commands on convenient keys, you can file without thinking about it.
+
+#+begin_src elisp
+(global-set-key (kbd "H-f") 'ts-throw)
+(global-set-key (kbd "H-g") 'ts-throw-up)
+(global-set-key (kbd "C-c k") 'ts-delete-this-buffer-and-file)
+(global-set-key (kbd "C-c l") 'ts-store-link-fold-drawer)
+(global-set-key (kbd "H-a") 'other-window)
+(global-set-key (kbd "H-w") 'outline-up-heading)
+(global-set-key (kbd "H-e") 'outline-previous-visible-heading)
+(global-set-key (kbd "H-r") 'outline-next-visible-heading)
+(global-set-key (kbd "H-d") 'org-narrow-to-subtree)
+(global-set-key (kbd "H-s") 'widen)
+(global-set-key (kbd "H-1") 'spacemacs/toggle-maximize-buffer)
+(global-set-key (kbd "H-2") 'delete-window)
+(global-set-key (kbd "H-3") 'split-window-right)
+(global-set-key (kbd "s-i") 'ido-dired)
+#+end_src
+
+* Changelog
+:PROPERTIES:
+:TOC:      0
+:END:
+
+** 0.0.1
+
+Initial release.
+
+* Credits
+
+  This package would not have been possible without the inspiration of http://brainstormsw.com
+
+* Development
+
+Bug reports, feature requests, suggestions go here.
+
+* License
+
+GPLv3
+
+# Local Variables:
+# eval: (require 'org-make-toc)
+# before-save-hook: org-make-toc
+# org-export-with-properties: ()
+# org-export-with-title: t
+# End:
