@@ -4,9 +4,7 @@
 
 # Note: This readme works with the org-make-toc <https://github.com/alphapapa/org-make-toc> package, which automatically updates the table of contents.
 
-file:https://melpa.org/packages/package-name-badge.svg file:https://stable.melpa.org/packages/package-name-badge.svg
-
-Treesort moves text and files through the directory tree.
+Treesort rapidly sorts text and files into outlines and the directory tree.
 
 * Contents                                                         :noexport:
 :PROPERTIES:
@@ -21,8 +19,6 @@ Treesort moves text and files through the directory tree.
   -  [[#license][License]]
 
 * Commentary
-
-Treesort rapidly sorts text and files into outlines and the directory tree.
 
 Treesort's main command is trs-throw. It moves text or files from the current
 window to a target in the next window. A second function, trs-throw-up, moves
