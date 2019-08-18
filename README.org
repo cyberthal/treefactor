@@ -96,10 +96,15 @@ file: trs.el
 Run one of these commands:
 
 `trs-throw' throw text/files to the next window
+
 `trs-throw-up' throw text/files one directory up
+
 `trs-delete-this-buffer-and-file' self-explanatory
+
 `trs-store-link-fold-drawer' store an org link and hide the drawer
+
 `trs-dired-zinks' store an org link in a file, titled with relative path
+
 `trs-duplicate-heading-to-other-window' self-explanatory
 
 ** Tips

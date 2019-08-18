@@ -6,7 +6,7 @@
 ;; Keywords: outlines, files, convenience
 ;; Package-Requires: ((emacs "24.3") (dash "2.16.0") (f "0.20.0"))
 ;; URL: https://github.com/cyberthal/treesort
-;; Version: 1.0.3
+;; Version: 1.0.4
 
 ;;; Commentary:
 
