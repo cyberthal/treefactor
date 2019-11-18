@@ -52,6 +52,8 @@
 
 (defvar user-home-directory) ; Spacemacs variable
 
+(defvar isearch-string)
+
 ;; *** customization
 
 (defgroup tro nil "Refactor prose and incrementally refile."
