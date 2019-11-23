@@ -260,7 +260,15 @@ Refiled text may be a line or an outline heading."
 
 ;;;###autoload
 (defun tro-refile-up (&optional count)
-  "Refile file or text one directory upwards, COUNT times."
+  "Refile file or text one step upwards, COUNT times.
+
+Text will go to an Inbox.org of the same directory level, or one
+higher if already in an Inbox.org
+
+File will go one directory level higher beneath a 0-Inbox/,
+unless already under 0-Inbox/, in which case two higher beneath a
+0-Inbox/"
+
   (interactive "p")
 
   (dotimes (var count)
@@ -273,19 +281,27 @@ Refiled text may be a line or an outline heading."
 ;; **** jump height
 
 (defun tro-jump-destination ()
-  "Return directory 1-2 above current, depending on ../0-Inbox."
+  "Return how many directory levels up tro-refile-up should go."
 
-  (concat default-directory
-
-          ;; "Returns ../ unless parent dir is 0-inbox, then ../../"
-          (if (tro-parent-dir-inbox-p)
-              "../../"
-            "../")))
+  (if (eq major-mode 'dired-mode)
+      (concat default-directory
+              ;; Returns ../ unless parent dir is 0-Inbox, then ../../
+              (if (tro-parent-dir-inbox-p)
+                  "../../"
+                "../"))
+    (concat default-directory
+            ;; "Returns ../ unless buffer's file is Inbox.org, then nil
+            (if (tro-file-inbox-p)
+                "../"
+              nil))))
 
 ;; **** object = text
 
 (defun tro-refile-up-text ()
-  "Refile text upwards in the directory tree to the next /0-Inbox."
+  "Refile text upwards to the next Inbox.org
+
+Text will go to an Inbox.org of the same directory level, or one
+higher if already in an Inbox.org"
 
   (let ((tro-buffer-home (current-buffer))
         (default-directory (tro-jump-destination)))
@@ -298,7 +314,11 @@ Refiled text may be a line or an outline heading."
 ;; **** target = file
 
 (defun tro-refile-up-file ()
-  "Refile file upwards in the directory tree to the next /0-Inbox."
+  "Refile file upwards in the directory tree to the next 0-Inbox/
+
+File will go one directory level higher and beneath a 0-Inbox/,
+unless already under 0-Inbox/, in which case two higher and beneath a
+0-Inbox/"
 
   (let* ((tro-jump-destination (tro-jump-destination))
          (tro-inbox-dir (concat tro-jump-destination "0-Inbox/")))
@@ -420,6 +440,18 @@ line."
    (file-name-nondirectory (directory-file-name default-directory)) ; Return parent directory.
    "0-Inbox"))
 
+;; ***** check whether file is "Inbox.org"
+
+(defun tro-file-inbox-p ()
+  "Return t if buffer's file is Inbox.org"
+
+  (if (eq (buffer-file-name) nil)
+      (user-error "%s" "Buffer has no file"))
+
+  (equal
+   (file-name-nondirectory (buffer-file-name))
+   "Inbox.org"))
+
 ;; ***** Inbox.org creation
 ;; ****** Create open Inbox.org
 
@@ -439,7 +471,7 @@ line."
                     (org-cycle-hide-drawers 1)
                     (goto-char (point-max)))))))
 
-;; ******* customization
+;; ****** customization
 
 (defcustom tro-inbox-file-header "*** Inbox.org\n:PROPERTIES:\n:VISIBILITY: children\n:END:\n\n"
   "Header inserted into new Inbox.org files created by `tro-refile-text' and `tro-refile-up-text'."
