@@ -276,7 +276,7 @@ unless already under 0-Inbox/, in which case two higher beneath a
     (if (eq major-mode 'dired-mode)
         (tro-refile-up-file)
       (tro-refile-up-text))
-    (message "Threw up %s times" (1+ var))))
+    (message "Refiled up %s times" (1+ var))))
 
 ;; **** jump height
 
