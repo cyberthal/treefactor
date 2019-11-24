@@ -225,7 +225,15 @@ Refiled text may be a line or an outline heading."
   (if (eq (point) (point-min))
       (user-error "User quit isearch"))
 
-  (tro-avy-isearch)
+  (if (eq 1 (length (avy--regex-candidates (regexp-quote isearch-string)))) ; 1 match?
+      (tro-place-in-outline)
+    (tro-avy-isearch)
+    (tro-place-in-outline)))
+
+;; ****** place in outline
+
+(defun tro-place-in-outline ()
+  "Refile text from previous window's heading to heading at point."
 
   (save-restriction
     (org-narrow-to-subtree)
@@ -611,14 +619,15 @@ INBOX heading. The user transfers text from the first window to the second."
 ;; *** avy-isearch if multimatch
 
 (defun tro-avy-isearch ()
-  "Run avy-isearch if two or more isearch matches exist in the visible portion of the current buffer."
+  "Run avy-isearch in the visible portion of the current buffer."
+
+  (goto-char (point-min))
+
   (let ((avy-all-windows nil)
         (avy-case-fold-search nil)
         (search-invisible nil))
-    (if (eq nil (unless (eq 1 (length (avy--regex-candidates (regexp-quote isearch-string))))
-                                   (goto-char (point-min))
-                                   (avy-isearch)))
-        (user-error "User quit Avy"))))
+    (unless (avy-isearch)               ; return nil if user quits
+      (user-error "User quit Avy"))))
 
 ;; *** heading ends n newlines
 
