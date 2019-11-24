@@ -4,9 +4,9 @@
 
 ;; Author: Leo Littlebook <Leo.Littlebook@gmail.com>
 ;; Keywords: outlines, files, convenience
-;; Package-Requires: ((emacs "24.3") (dash "2.16.0") (f "0.20.0"))
+;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0"))
 ;; URL: https://github.com/cyberthal/treefactor
-;; Version: 2.1.3
+;; Version: 2.1.4
 
 ;;; Commentary:
 
@@ -54,6 +54,8 @@
 
 (defvar isearch-string)
 
+(defvar dired-isearch-filenames)
+
 ;; *** customization
 
 (defgroup tro nil "Refactor prose and incrementally refile."
@@ -74,33 +76,13 @@ Do not set to tro or it will cause an infinite loop."
 
 ;; *** aliases
 
-(defun tro-alias-oldname (suffix)
-  "Reconstruct original function name from SUFFIX."
-  (intern (concat "tro-" suffix)))
-(defun tro-alias-newname (suffix)
-  "Make new function name from SUFFIX."
-  (intern (concat tro-alias-prefix "-" suffix)))
-(defun tro-alias-name-list (suffix)
-  "Make a list of new and old function names from SUFFIX."
-  (list (tro-alias-newname suffix) (tro-alias-oldname suffix)))
-
-(defmacro tro-defalias-from-names (newname oldname)
-  "Make a defalias with NEWNAME and OLDNAME."
-  `(defalias ',newname ',oldname))
-
-(defmacro tro-defalias-from-suffix (suffix)
-  "Make a defalias from SUFFIX."
-  (let ((tro-alias-name-list (tro-alias-name-list suffix)))
-    `(tro-defalias-from-names ,(car tro-alias-name-list) ,(nth 1 tro-alias-name-list))))
+(defun tro-defalias (suffix)
+  "Alias `tro' function SUFFIX to a different prefix `tro-alias-prefix'."
+  (defalias (intern (concat tro-alias-prefix "-" suffix))
+    (intern (concat "tro-" suffix))))
 
 (when tro-use-alias-prefixes
-  (tro-defalias-from-suffix "refile")
-(tro-defalias-from-suffix "refile-up")
-(tro-defalias-from-suffix "delete-this-buffer-and-file")
-(tro-defalias-from-suffix "org-store-link-fold-drawer")
-(tro-defalias-from-suffix "org-dired-zinks")
-(tro-defalias-from-suffix "org-duplicate-heading-to-other-window")
-(tro-defalias-from-suffix "org-refactor-heading"))
+  (mapc #'tro-defalias (list "refile" "refile-up" "delete-this-buffer-and-file" "org-store-link-fold-drawer" "org-dired-zinks" "org-duplicate-heading-to-other-window" "org-refactor-heading")))
 
 ;; ** Refile
 
@@ -120,8 +102,7 @@ Select a line from target list using `isearch' then `avy'."
 
   (dotimes (_var count)
     (unwind-protect
-        (tro-refile-object-mode-check)
-      )))
+        (tro-refile-object-mode-check))))
 
 (defun tro-refile-object-mode-check ()
   "Determine correct action based on current window mode.
@@ -144,7 +125,7 @@ If in dired, refile files. If not, refile text."
 
     (if tro-in-dired-p
         (tro-refile-text-to-dired)
-      (call-interactively 'tro-refile-text-to-outline)))
+      (call-interactively #'tro-refile-text-to-outline)))
   (other-window -1)                     ; because save-selected-window fails
   (save-buffer))
 
@@ -289,7 +270,7 @@ unless already under 0-Inbox/, in which case two higher beneath a
 ;; **** jump height
 
 (defun tro-jump-destination ()
-  "Return how many directory levels up tro-refile-up should go."
+  "Return how many directory levels up `tro-refile-up' should go."
 
   (if (eq major-mode 'dired-mode)
       (concat default-directory
@@ -306,7 +287,7 @@ unless already under 0-Inbox/, in which case two higher beneath a
 ;; **** object = text
 
 (defun tro-refile-up-text ()
-  "Refile text upwards to the next Inbox.org
+  "Refile text up to the next Inbox.org.
 
 Text will go to an Inbox.org of the same directory level, or one
 higher if already in an Inbox.org"
@@ -322,11 +303,10 @@ higher if already in an Inbox.org"
 ;; **** target = file
 
 (defun tro-refile-up-file ()
-  "Refile file upwards in the directory tree to the next 0-Inbox/
+  "Refile file up to the next 0-Inbox/.
 
-File will go one directory level higher and beneath a 0-Inbox/,
-unless already under 0-Inbox/, in which case two higher and beneath a
-0-Inbox/"
+File will go one directory level higher and beneath 0-Inbox/,
+unless already under 0-Inbox/, in which case two higher and beneath 0-Inbox/."
 
   (let* ((tro-jump-destination (tro-jump-destination))
          (tro-inbox-dir (concat tro-jump-destination "0-Inbox/")))
@@ -343,7 +323,7 @@ unless already under 0-Inbox/, in which case two higher and beneath a
 ;; ***** text mode?
 
 (defun tro-snort-text ()
-  "If heading or line of text to tro-snort-line variable."
+  "If heading or line of text to `tro-snort-line' variable."
   (cond ((eq major-mode 'org-mode) (tro-snort-text-org))
         ((-contains-p minor-mode-list 'outshine-mode) (tro-snort-text-outshine))
         ((-contains-p minor-mode-list 'outline-minor-mode) (tro-snort-text-outline))
@@ -451,7 +431,7 @@ line."
 ;; ***** check whether file is "Inbox.org"
 
 (defun tro-file-inbox-p ()
-  "Return t if buffer's file is Inbox.org"
+  "Return t if buffer's filename is Inbox.org."
 
   (if (eq (buffer-file-name) nil)
       (user-error "%s" "Buffer has no file"))
@@ -619,7 +599,7 @@ INBOX heading. The user transfers text from the first window to the second."
 ;; *** avy-isearch if multimatch
 
 (defun tro-avy-isearch ()
-  "Run avy-isearch in the visible portion of the current buffer."
+  "Run `avy-isearch' in the visible portion of the current buffer."
 
   (goto-char (point-min))
 
@@ -695,4 +675,5 @@ Reported path is relative to vd-root-dir or ~/."
 ;; ** provide
 
 (provide 'tro)
+
 ;;; tro.el ends here
