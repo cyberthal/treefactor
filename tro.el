@@ -1,12 +1,12 @@
-;;; tro.el --- Refactor prose outlines and incrementally refile     -*- lexical-binding: t; -*-
+;;; tro.el --- Restructure your messy Org documents     -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2019 Leo Littlebook
 
 ;; Author: Leo Littlebook <Leo.Littlebook@gmail.com>
 ;; Keywords: outlines, files, convenience
-;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0") (org "9.2.6"))
+;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0") (org "9.2.6") (avy "0.5.0"))
 ;; URL: https://github.com/cyberthal/treefactor
-;; Version: 2.1.6
+;; Version: 2.1.7
 
 ;;; Commentary:
 
@@ -280,9 +280,7 @@ unless already under 0-Inbox/, in which case two higher beneath a
                 "../"))
     (concat default-directory
             ;; "Returns ../ unless buffer's file is Inbox.org, then nil
-            (if (tro-file-inbox-p)
-                "../"
-              nil))))
+            (when (tro-file-inbox-p) "../"))))
 
 ;; **** object = text
 
@@ -310,8 +308,7 @@ unless already under 0-Inbox/, in which case two higher and beneath 0-Inbox/."
 
   (let* ((tro-jump-destination (tro-jump-destination))
          (tro-inbox-dir (concat tro-jump-destination "0-Inbox/")))
-    (if (file-exists-p tro-inbox-dir)
-        ()
+    (unless (file-exists-p tro-inbox-dir)
       (mkdir tro-inbox-dir))
     (rename-file (dired-get-filename "no-dir") tro-inbox-dir)
     (message "File refiled to %s" tro-jump-destination))
@@ -399,8 +396,7 @@ line."
 (defun tro-search-dired-open ()
   "Open the `dired' file that the user picked using `isearch'."
 
-  (if (string-equal major-mode "dired-mode")
-      nil
+  (unless (string-equal major-mode "dired-mode")
     (user-error "%s" "Mode must be Dired"))
 
   (goto-char (point-min))
@@ -614,8 +610,7 @@ INBOX heading. The user transfers text from the first window to the second."
 (defun tro-region-ends-n-newlines (n)
   "Make region end in N newlines. Set point to end of region."
 
-  (if (>= n 0)
-      ()
+  (when (< n 0)
     (user-error "N is too small: %s" n))
 
   (let ((m (- n 1)))
