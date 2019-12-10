@@ -6,7 +6,7 @@
 ;; Keywords: outlines, files, convenience
 ;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0") (org "9.2.6") (avy "0.5.0"))
 ;; URL: https://github.com/cyberthal/treefactor
-;; Version: 2.1.7
+;; Version: 2.1.8
 
 ;;; Commentary:
 
@@ -120,7 +120,7 @@ If in dired, refile files. If not, refile text."
   "Refile text to either Dired or an outline."
 
   (select-window (next-window))
-  (let ((tro-in-dired-p (string-equal major-mode 'dired-mode)))
+  (let ((tro-in-dired-p (eq major-mode 'dired-mode)))
     (select-window (previous-window))
 
     (if tro-in-dired-p
@@ -168,10 +168,9 @@ Assume a polished document will have a level-1 near the top."
 
   (goto-char (point-min))
   (condition-case nil
-      (progn
-        (re-search-forward "^* ")       ; Search for a level-1 headline.
-        (goto-char (point-at-bol))
-        (insert tro-object-text))
+      (re-search-forward "^* ")       ; Search for a level-1 headline.
+       (goto-char (point-at-bol))
+       (insert tro-object-text)
     (error (tro-insert-to-end-of-buffer)))
   (save-buffer)
   (tro-text-inserted-to-buffer-path-message))
@@ -195,7 +194,16 @@ Refiled text may be a line or an outline heading."
 
   ;; reset target list visibility
   (goto-char (point-min))
-  (outline-hide-subtree)
+
+  (if (org-at-heading-p)
+      (outline-hide-subtree)
+    (outline-next-visible-heading 1))
+
+  (if (org-at-heading-p)
+      (outline-hide-subtree)
+    (goto-char (point-min))
+    (user-error "%s" "Outline not found in visible region"))
+
   (outline-show-children 1)
   (outline-hide-body)
 
@@ -204,7 +212,7 @@ Refiled text may be a line or an outline heading."
     (isearch-forward))
 
   (if (eq (point) (point-min))
-      (user-error "User quit isearch"))
+      (user-error "%s" "User quit isearch"))
 
   (if (eq 1 (length (avy--regex-candidates (regexp-quote isearch-string)))) ; 1 match?
       (tro-place-in-outline)
@@ -396,7 +404,7 @@ line."
 (defun tro-search-dired-open ()
   "Open the `dired' file that the user picked using `isearch'."
 
-  (unless (string-equal major-mode "dired-mode")
+  (unless (eq major-mode 'dired-mode)
     (user-error "%s" "Mode must be Dired"))
 
   (goto-char (point-min))
@@ -448,12 +456,12 @@ line."
     (cond (tro-inbox-file-buffer (set-buffer tro-inbox-file-buffer)) ; select buffer if exists
           ((file-exists-p tro-inbox-file-path) (find-file tro-inbox-file-path)) ; open file if exists
           ;; else create and open file
-          (t (progn (f-touch "Inbox.org")
-                    (find-file tro-inbox-file-path)
-                    (insert tro-inbox-file-header)
-                    (goto-char (point-min))
-                    (org-cycle-hide-drawers 1)
-                    (goto-char (point-max)))))))
+          (t (f-touch "Inbox.org")
+             (find-file tro-inbox-file-path)
+             (insert tro-inbox-file-header)
+             (goto-char (point-min))
+             (org-cycle-hide-drawers 1)
+             (goto-char (point-max))))))
 
 ;; ****** customization
 
@@ -543,14 +551,13 @@ INBOX heading. The user transfers text from the first window to the second."
 
   (interactive)
 
-  (cond ((unless (string-equal major-mode 'org-mode) t) (user-error "%s" "Error, must be in org-mode"))
+  (cond ((unless (eq major-mode 'org-mode) t) (user-error "%s" "Error, must be in org-mode"))
         ((unless (eq 1 (length (window-list))) t) (user-error "%s" "Error, must have only one window open in frame"))
         ((unless (progn
                    (org-narrow-to-subtree)
                    (org-previous-visible-heading 1)
                    (org-at-heading-p)) t) (user-error "%s" "Error, point must be inside a heading"))
-        (t (progn
-
+        (t
              ;; ensure region ends with two newlines
              (goto-char (point-max))
              (if (bolp)
@@ -588,7 +595,7 @@ INBOX heading. The user transfers text from the first window to the second."
              (org-cycle)
              (org-narrow-to-subtree)
              (org-show-all '(headings))
-             (org-cycle-hide-drawers 1)))))
+             (org-cycle-hide-drawers 1))))
 
 ;; ** library
 
@@ -603,7 +610,7 @@ INBOX heading. The user transfers text from the first window to the second."
         (avy-case-fold-search nil)
         (search-invisible nil))
     (unless (avy-isearch)               ; return nil if user quits
-      (user-error "User quit Avy"))))
+      (user-error "%s" "User quit Avy"))))
 
 ;; *** heading ends n newlines
 
@@ -616,10 +623,10 @@ INBOX heading. The user transfers text from the first window to the second."
   (let ((m (- n 1)))
     (goto-char (point-max))
     (if (bolp)
-        (if (= n 0)
-            (progn (org-N-empty-lines-before-current n)
-                   (delete-char -1))
-          (org-N-empty-lines-before-current m))
+        (if (/= n 0)
+            (org-N-empty-lines-before-current m)
+          (org-N-empty-lines-before-current n)
+          (delete-char -1))
       (insert (make-string n ?\n))))
   (goto-char (point-max)))
 
