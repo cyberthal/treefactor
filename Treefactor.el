@@ -1,4 +1,4 @@
-;;; tro.el --- Restructure your messy Org documents     -*- lexical-binding: t; -*-
+;;; treefactor.el --- Restructure your messy Org documents     -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2019 Leo Littlebook
 
@@ -6,7 +6,7 @@
 ;; Keywords: outlines, files, convenience
 ;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0") (org "9.2.6") (avy "0.5.0"))
 ;; URL: https://github.com/cyberthal/treefactor
-;; Version: 2.1.8
+;; Version: 3.0.0
 
 ;;; Commentary:
 
@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-;; * tro.el
+;; * treefactor.el
 ;; * offset
 ;; ** config
 ;; *** require
@@ -47,7 +47,7 @@
 
 ;; *** define vars and funcs
 
-(defvar tro-object-text nil
+(defvar treefactor-object-text nil
   "Stores the last text Treefactor killed or copied.")
 
 (defvar user-home-directory) ; Spacemacs variable
@@ -58,74 +58,94 @@
 
 ;; *** customization
 
-(defgroup tro nil "Refactor prose and incrementally refile."
+(defgroup treefactor nil "Refactor prose and incrementally refile."
   :group 'convenience
   :group 'files)
 
-(defcustom tro-use-alias-prefixes nil
+(defcustom treefactor-use-alias-prefixes nil
   "Non-nil if prefix aliases should be created for user commands."
   :type 'boolean
-  :group 'tro)
+  :group 'treefactor)
 
-(defcustom tro-alias-prefix "leo"
-  "Prefix for aliased user commands. No dash needed.
+(defcustom treefactor-alias-prefix-1 "tro"
+  "First prefix for aliased user commands. No dash needed.
 
-Do not set to tro or it will cause an infinite loop."
+Do not set to treefactor or it will cause an infinite loop."
   :type '(string)
-  :group 'tro)
+  :group 'treefactor)
+
+(defcustom treefactor-alias-prefix-2 ""
+  "Second prefix for aliased user commands. No dash needed.
+
+Do not set to treefactor or it will cause an infinite loop."
+  :type '(string)
+  :group 'treefactor)
 
 ;; *** aliases
 
-(defun tro-defalias (suffix)
-  "Alias `tro' function SUFFIX to a different prefix `tro-alias-prefix'."
-  (defalias (intern (concat tro-alias-prefix "-" suffix))
-    (intern (concat "tro-" suffix))))
+(defvar treefactor-user-commands
+  (list "refile" "refile-up" "delete-this-buffer-and-file" "org-store-link-fold-drawer" "org-dired-zinks" "org-duplicate-heading-to-other-window" "org-refactor-heading"))
 
-(when tro-use-alias-prefixes
-  (mapc #'tro-defalias (list "refile" "refile-up" "delete-this-buffer-and-file" "org-store-link-fold-drawer" "org-dired-zinks" "org-duplicate-heading-to-other-window" "org-refactor-heading")))
+(defun treefactor-defalias-1 (suffix)
+  "Alias `treefactor' function SUFFIX to `treefactor-alias-prefix-1'."
+  (defalias
+    (intern (concat treefactor-alias-prefix-1 "-" suffix))
+    (intern (concat "treefactor-" suffix))))
+
+(defun treefactor-defalias-2 (suffix)
+  "Alias `treefactor' function SUFFIX to `treefactor-alias-prefix-2'."
+  (defalias
+    (intern (concat treefactor-alias-prefix-2 "-" suffix))
+    (intern (concat "treefactor-" suffix))))
+
+(when treefactor-use-alias-prefixes
+  (when treefactor-alias-prefix-1
+    (mapc #'treefactor-defalias-1 treefactor-user-commands))
+  (when treefactor-alias-prefix-2
+    (mapc #'treefactor-defalias-2 treefactor-user-commands)))
 
 ;; ** Refile
 
 ;; *** define variables and declare functions
 
-(defvar tro-inbox-file-header)
+(defvar treefactor-inbox-file-header)
 
 (declare-function outshine-narrow-to-subtree "outshine" ())
 
 ;; *** main defun
 
 ;;;###autoload
-(defun tro-refile (&optional count)
+(defun treefactor-throw (&optional count)
   "Refile text/file to target in next window COUNT times.
 Select a line from target list using `isearch' then `avy'."
   (interactive "p")
 
   (dotimes (_var count)
     (unwind-protect
-        (tro-refile-object-mode-check))))
+        (treefactor-throw-object-mode-check))))
 
-(defun tro-refile-object-mode-check ()
+(defun treefactor-throw-object-mode-check ()
   "Determine correct action based on current window mode.
 If in dired, refile files. If not, refile text."
 
   (if (eq major-mode 'dired-mode)
-      (tro-refile-file)
-    (tro-refile-text)))
+      (treefactor-throw-file)
+    (treefactor-throw-text)))
 
 ;; *** flow control dispatcher
 ;; **** refile text
 ;; ***** main defun
 
-(defun tro-refile-text ()
+(defun treefactor-throw-text ()
   "Refile text to either Dired or an outline."
 
   (select-window (next-window))
-  (let ((tro-in-dired-p (eq major-mode 'dired-mode)))
+  (let ((treefactor-in-dired-p (eq major-mode 'dired-mode)))
     (select-window (previous-window))
 
-    (if tro-in-dired-p
-        (tro-refile-text-to-dired)
-      (call-interactively #'tro-refile-text-to-outline)))
+    (if treefactor-in-dired-p
+        (treefactor-throw-text-to-dired)
+      (call-interactively #'treefactor-throw-text-to-outline)))
   (other-window -1)                     ; because save-selected-window fails
   (save-buffer))
 
@@ -133,33 +153,33 @@ If in dired, refile files. If not, refile text."
 
 ;; ****** main defun
 
-(defun tro-refile-text-to-dired ()
+(defun treefactor-throw-text-to-dired ()
   "Refile text to a searched target in an adjacent Dired buffer."
 
   (select-window (next-window))
-  (let ((tro-dired-starting-buffer (current-buffer)))
-    (tro-search-dired-open)
+  (let ((treefactor-dired-starting-buffer (current-buffer)))
+    (treefactor-search-dired-open)
     (select-window (previous-window))
-    (tro-snort-text)
+    (treefactor-snort-text)
     (select-window (next-window))
     (if buffer-file-name
-        (tro-insert-text-to-file-blind)
-      (tro-insert-text-to-directory))
-    (switch-to-buffer tro-dired-starting-buffer) ; cuz save-current-buffer bugged
+        (treefactor-insert-text-to-file-blind)
+      (treefactor-insert-text-to-directory))
+    (switch-to-buffer treefactor-dired-starting-buffer) ; cuz save-current-buffer bugged
     (forward-char 2)))
 
 ;; ****** destination = dir
 
-(defun tro-insert-text-to-directory ()
-  "Insert `tro-object-text' to Inbox.org."
+(defun treefactor-insert-text-to-directory ()
+  "Insert `treefactor-object-text' to Inbox.org."
 
-  (tro-create-open-inbox-file)
-  (tro-insert-to-end-of-buffer)
-  (tro-text-inserted-to-buffer-path-message))
+  (treefactor-create-open-inbox-file)
+  (treefactor-insert-to-end-of-buffer)
+  (treefactor-text-inserted-to-buffer-path-message))
 
 ;; ****** destination = file
 
-(defun tro-insert-text-to-file-blind ()
+(defun treefactor-insert-text-to-file-blind ()
   "Put point either before first level-1 heading or at end of buffer.
 Normally one wants to yank to the end of the buffer.
 But if it's a polished document rather than an inbox,
@@ -170,15 +190,15 @@ Assume a polished document will have a level-1 near the top."
   (condition-case nil
       (re-search-forward "^* ")       ; Search for a level-1 headline.
        (goto-char (point-at-bol))
-       (insert tro-object-text)
-    (error (tro-insert-to-end-of-buffer)))
+       (insert treefactor-object-text)
+    (error (treefactor-insert-to-end-of-buffer)))
   (save-buffer)
-  (tro-text-inserted-to-buffer-path-message))
+  (treefactor-text-inserted-to-buffer-path-message))
 
 ;; ***** destination = text
 ;; ****** main defun
 
-(defun tro-refile-text-to-outline ()
+(defun treefactor-throw-text-to-outline ()
   "Refile text to an outline heading in the next window.
 
 Assume that the first line of the target window is the parent
@@ -215,32 +235,32 @@ Refiled text may be a line or an outline heading."
       (user-error "%s" "User quit isearch"))
 
   (if (eq 1 (length (avy--regex-candidates (regexp-quote isearch-string)))) ; 1 match?
-      (tro-place-in-outline)
-    (tro-avy-isearch)
-    (tro-place-in-outline)))
+      (treefactor-place-in-outline)
+    (treefactor-avy-isearch)
+    (treefactor-place-in-outline)))
 
 ;; ****** place in outline
 
-(defun tro-place-in-outline ()
+(defun treefactor-place-in-outline ()
   "Refile text from previous window's heading to heading at point."
 
   (save-restriction
     (org-narrow-to-subtree)
-    (tro-region-ends-n-newlines 2)
+    (treefactor-region-ends-n-newlines 2)
     (save-selected-window (select-window (previous-window))
-                          (tro-snort-text))
-    (insert tro-object-text)
+                          (treefactor-snort-text))
+    (insert treefactor-object-text)
     (save-buffer)
     (goto-char (point-min)))
   (outline-hide-subtree))
 
 ;; **** refile file
 
-(defun tro-refile-file ()
+(defun treefactor-throw-file ()
   "Refile file(s) from Dired to searched target in next window."
 
   (select-window (next-window))
-  (tro-search-dired-open)
+  (treefactor-search-dired-open)
   (mkdir (concat default-directory "0-Inbox/") 1)
   (find-file (concat default-directory "0-Inbox/"))
   (select-window (previous-window))
@@ -256,7 +276,7 @@ Refiled text may be a line or an outline heading."
 ;; **** main defun
 
 ;;;###autoload
-(defun tro-refile-up (&optional count)
+(defun treefactor-up (&optional count)
   "Refile file or text one step upwards, COUNT times.
 
 Text will go to an Inbox.org of the same directory level, or one
@@ -271,55 +291,55 @@ unless already under 0-Inbox/, in which case two higher beneath a
   (dotimes (var count)
 
     (if (eq major-mode 'dired-mode)
-        (tro-refile-up-file)
-      (tro-refile-up-text))
+        (treefactor-up-file)
+      (treefactor-up-text))
     (message "Refiled up %s times" (1+ var))))
 
 ;; **** jump height
 
-(defun tro-jump-destination ()
-  "Return how many directory levels up `tro-refile-up' should go."
+(defun treefactor-jump-destination ()
+  "Return how many directory levels up `treefactor-up' should go."
 
   (if (eq major-mode 'dired-mode)
       (concat default-directory
               ;; Returns ../ unless parent dir is 0-Inbox, then ../../
-              (if (tro-parent-dir-inbox-p)
+              (if (treefactor-parent-dir-inbox-p)
                   "../../"
                 "../"))
     (concat default-directory
             ;; "Returns ../ unless buffer's file is Inbox.org, then nil
-            (when (tro-file-inbox-p) "../"))))
+            (when (treefactor-file-inbox-p) "../"))))
 
 ;; **** object = text
 
-(defun tro-refile-up-text ()
+(defun treefactor-up-text ()
   "Refile text up to the next Inbox.org.
 
 Text will go to an Inbox.org of the same directory level, or one
 higher if already in an Inbox.org"
 
-  (let ((tro-buffer-home (current-buffer))
-        (default-directory (tro-jump-destination)))
-    (tro-snort-text)
-    (tro-create-open-inbox-file)
-    (tro-insert-text-to-file-blind)
-    (switch-to-buffer tro-buffer-home) ; because save-current-buffer failed here
+  (let ((treefactor-buffer-home (current-buffer))
+        (default-directory (treefactor-jump-destination)))
+    (treefactor-snort-text)
+    (treefactor-create-open-inbox-file)
+    (treefactor-insert-text-to-file-blind)
+    (switch-to-buffer treefactor-buffer-home) ; because save-current-buffer failed here
     (save-buffer)))
 
 ;; **** target = file
 
-(defun tro-refile-up-file ()
+(defun treefactor-up-file ()
   "Refile file up to the next 0-Inbox/.
 
 File will go one directory level higher and beneath 0-Inbox/,
 unless already under 0-Inbox/, in which case two higher and beneath 0-Inbox/."
 
-  (let* ((tro-jump-destination (tro-jump-destination))
-         (tro-inbox-dir (concat tro-jump-destination "0-Inbox/")))
-    (unless (file-exists-p tro-inbox-dir)
-      (mkdir tro-inbox-dir))
-    (rename-file (dired-get-filename "no-dir") tro-inbox-dir)
-    (message "File refiled to %s" tro-jump-destination))
+  (let* ((treefactor-jump-destination (treefactor-jump-destination))
+         (treefactor-inbox-dir (concat treefactor-jump-destination "0-Inbox/")))
+    (unless (file-exists-p treefactor-inbox-dir)
+      (mkdir treefactor-inbox-dir))
+    (rename-file (dired-get-filename "no-dir") treefactor-inbox-dir)
+    (message "File refiled to %s" treefactor-jump-destination))
   (revert-buffer)        ; refreshes screen significantly faster than otherwise.
   )
 
@@ -327,81 +347,81 @@ unless already under 0-Inbox/, in which case two higher and beneath 0-Inbox/."
 ;; **** snort type
 ;; ***** text mode?
 
-(defun tro-snort-text ()
-  "If heading or line of text to `tro-snort-line' variable."
-  (cond ((eq major-mode 'org-mode) (tro-snort-text-org))
-        ((-contains-p minor-mode-list 'outshine-mode) (tro-snort-text-outshine))
-        ((-contains-p minor-mode-list 'outline-minor-mode) (tro-snort-text-outline))
-        (t (tro-snort-line))))
+(defun treefactor-snort-text ()
+  "If heading or line of text to `treefactor-snort-line' variable."
+  (cond ((eq major-mode 'org-mode) (treefactor-snort-text-org))
+        ((-contains-p minor-mode-list 'outshine-mode) (treefactor-snort-text-outshine))
+        ((-contains-p minor-mode-list 'outline-minor-mode) (treefactor-snort-text-outline))
+        (t (treefactor-snort-line))))
 
 ;; ***** at heading?
 
-(defun tro-snort-text-org ()
+(defun treefactor-snort-text-org ()
   "Store text. Range stored depends on local context.
 
 If in a an `org' heading, store the heading. Otherwise, store the
 line."
 
-  (if (org-at-heading-p) (tro-snort-org-heading)
-    (tro-snort-line)))
+  (if (org-at-heading-p) (treefactor-snort-org-heading)
+    (treefactor-snort-line)))
 
-(defun tro-snort-text-outshine ()
+(defun treefactor-snort-text-outshine ()
   "Store text. Range stored depends on context.
 
 If inside an `outshine' outline heading, store text. Otherwise,
 store line."
 
-  (if (outline-on-heading-p) (tro-snort-outshine-heading)
-    (tro-snort-line)))
+  (if (outline-on-heading-p) (treefactor-snort-outshine-heading)
+    (treefactor-snort-line)))
 
-(defun tro-snort-text-outline ()
+(defun treefactor-snort-text-outline ()
   "Store text. Range stored depends on context.
 
 If in an outline heading, store the heading. Otherwise store
 line."
 
-  (if (outline-on-heading-p) (tro-snort-outline-heading)
-    (tro-snort-line)))
+  (if (outline-on-heading-p) (treefactor-snort-outline-heading)
+    (treefactor-snort-line)))
 
 ;; ***** heading type?
 
-(defun tro-snort-org-heading ()
+(defun treefactor-snort-org-heading ()
   "Store an `org' heading."
 
   (save-restriction
     (org-narrow-to-subtree)
-    (tro-snort-visible)))
+    (treefactor-snort-visible)))
 
-(defun tro-snort-outshine-heading ()
+(defun treefactor-snort-outshine-heading ()
   "Store an `outshine' heading."
 
   (save-restriction
     (outshine-narrow-to-subtree)
-    (tro-snort-visible)))
+    (treefactor-snort-visible)))
 
-(defun tro-snort-outline-heading ()
+(defun treefactor-snort-outline-heading ()
   "Store an outline heading."
 
   (save-restriction
     (org-narrow-to-subtree)
-    (tro-snort-visible)))
+    (treefactor-snort-visible)))
 
 ;; ***** line
 
-(defun tro-snort-line ()
-  "Move a line of text to variable `tro-object-text'."
+(defun treefactor-snort-line ()
+  "Move a line of text to variable `treefactor-object-text'."
 
   (if (eq (point-min) (point-max))
       (user-error "%s" "Selected line is empty")
-    (setq tro-object-text
+    (setq treefactor-object-text
           (concat (delete-and-extract-region (line-beginning-position) (line-end-position))
                   "\n"))
-    (tro-delete-leftover-empty-line)))
+    (treefactor-delete-leftover-empty-line)))
 
 ;; **** files
 ;; ***** Find the searched dired entry
 
-(defun tro-search-dired-open ()
+(defun treefactor-search-dired-open ()
   "Open the `dired' file that the user picked using `isearch'."
 
   (unless (eq major-mode 'dired-mode)
@@ -417,7 +437,7 @@ line."
         (search-exit-option nil))
     (isearch-forward))
 
-  ;; (tro-avy-isearch) cuz avy searches hidden dired text
+  ;; (treefactor-avy-isearch) cuz avy searches hidden dired text
   ;; https://github.com/abo-abo/avy/issues/282
   ;; isearch-lazy-count might also work when it's released.
 
@@ -425,7 +445,7 @@ line."
 
 ;; ***** check whether immediate parent dir is "0-Inbox"
 
-(defun tro-parent-dir-inbox-p ()
+(defun treefactor-parent-dir-inbox-p ()
   "Return t if parent dir is 0-Inbox."
 
   (equal
@@ -434,7 +454,7 @@ line."
 
 ;; ***** check whether file is "Inbox.org"
 
-(defun tro-file-inbox-p ()
+(defun treefactor-file-inbox-p ()
   "Return t if buffer's filename is Inbox.org."
 
   (if (eq (buffer-file-name) nil)
@@ -447,33 +467,34 @@ line."
 ;; ***** Inbox.org creation
 ;; ****** Create open Inbox.org
 
-(defun tro-create-open-inbox-file ()
+(defun treefactor-create-open-inbox-file ()
   "If no Inbox.org, make it and insert *** offset."
 
-  (let* ((tro-inbox-file-path (concat default-directory "Inbox.org"))
-         (tro-inbox-file-buffer (find-buffer-visiting tro-inbox-file-path)))
+  (let* ((treefactor-inbox-file-path (concat default-directory "Inbox.org"))
+         (treefactor-inbox-file-buffer (find-buffer-visiting treefactor-inbox-file-path)))
 
-    (cond (tro-inbox-file-buffer (set-buffer tro-inbox-file-buffer)) ; select buffer if exists
-          ((file-exists-p tro-inbox-file-path) (find-file tro-inbox-file-path)) ; open file if exists
+    (cond (treefactor-inbox-file-buffer (set-buffer treefactor-inbox-file-buffer)) ; select buffer if exists
+          ((file-exists-p treefactor-inbox-file-path) (find-file treefactor-inbox-file-path)) ; open file if exists
           ;; else create and open file
           (t (f-touch "Inbox.org")
-             (find-file tro-inbox-file-path)
-             (insert tro-inbox-file-header)
+             (find-file treefactor-inbox-file-path)
+             (insert treefactor-inbox-file-header)
              (goto-char (point-min))
              (org-cycle-hide-drawers 1)
              (goto-char (point-max))))))
 
 ;; ****** customization
 
-(defcustom tro-inbox-file-header "*** Inbox.org\n:PROPERTIES:\n:VISIBILITY: children\n:END:\n\n"
-  "Header inserted into new Inbox.org files created by `tro-refile-text' and `tro-refile-up-text'."
+(defcustom treefactor-inbox-file-header "*** Inbox.org\n:PROPERTIES:\n:VISIBILITY: children\n:END:\n\n"
+  "Header inserted into new Inbox.org files created by `treefactor-throw-text' and `treefactor-up-text'."
   :type '(string)
-  :group 'tro)
+  :group 'treefactor)
+
 ;; ** utilities
-;; *** tro-delete-this-buffer-and-file
+;; *** treefactor-delete-this-buffer-and-file
 
 ;;;###autoload
-(defun tro-delete-this-buffer-and-file ()
+(defun treefactor-delete-this-buffer-and-file ()
   "Delete file visited by current buffer and kill buffer."
   (interactive)
 
@@ -489,7 +510,7 @@ line."
 ;; **** Store link and fold the PROPERTIES drawer
 
 ;;;###autoload
-(defun tro-org-store-link-fold-drawer ()
+(defun treefactor-org-store-link-fold-drawer ()
   "Store an org link to a heading, and fold the drawer."
   (interactive)
 
@@ -503,7 +524,7 @@ line."
 ;; **** create Zinks.org
 
 ;;;###autoload
-(defun tro-org-dired-zinks ()
+(defun treefactor-org-dired-zinks ()
   "Make Zinks.org.  Insert org-id link.
 
 Link title's path is relative to `vc-root-dir' if present,
@@ -520,29 +541,29 @@ else `user-home-directory'."
                                                 (user-home-directory user-home-directory) ; Spacemacs variable. If missing, no problem.
                                                 ))
                       "\n\n"))
-      (tro-org-store-link-fold-drawer)
+      (treefactor-org-store-link-fold-drawer)
       (save-buffer)
       (goto-char (point-max)))))
 
 ;; *** duplicate heading to other window
 
 ;;;###autoload
-(defun tro-org-duplicate-heading-to-other-window ()
+(defun treefactor-org-duplicate-heading-to-other-window ()
   "Append heading at point to end of next window's buffer."
   (interactive)
 
   (save-restriction
     (org-narrow-to-subtree)
-    (tro-region-ends-n-newlines 1)
+    (treefactor-region-ends-n-newlines 1)
     (let ((home-buffer (current-buffer)))
       (save-selected-window
         (select-window (next-window))
-        (tro-region-ends-n-newlines 2)
+        (treefactor-region-ends-n-newlines 2)
         (insert-buffer-substring home-buffer)))))
 
 ;; *** Refactor heading
 
-(defun tro-org-refactor-heading ()
+(defun treefactor-org-refactor-heading ()
   "From a single-window frame in `org-mode', setup frame to refactor an heading.
 
 A duplicate of the heading is created with the suffix | REFACTORED.
@@ -601,7 +622,7 @@ INBOX heading. The user transfers text from the first window to the second."
 
 ;; *** avy-isearch if multimatch
 
-(defun tro-avy-isearch ()
+(defun treefactor-avy-isearch ()
   "Run `avy-isearch' in the visible portion of the current buffer."
 
   (goto-char (point-min))
@@ -614,7 +635,7 @@ INBOX heading. The user transfers text from the first window to the second."
 
 ;; *** heading ends n newlines
 
-(defun tro-region-ends-n-newlines (n)
+(defun treefactor-region-ends-n-newlines (n)
   "Make region end in N newlines. Set point to end of region."
 
   (when (< n 0)
@@ -632,17 +653,17 @@ INBOX heading. The user transfers text from the first window to the second."
 
 ;; *** snort visible region
 
-(defun tro-snort-visible ()
-  "Move region to `tro-object-text'.  Widen.  Delete empty line."
+(defun treefactor-snort-visible ()
+  "Move region to `treefactor-object-text'.  Widen.  Delete empty line."
 
-  (tro-region-ends-n-newlines 1)
-  (setq tro-object-text (delete-and-extract-region (point-min) (point-max)))
+  (treefactor-region-ends-n-newlines 1)
+  (setq treefactor-object-text (delete-and-extract-region (point-min) (point-max)))
   (widen)
-  (tro-delete-leftover-empty-line))
+  (treefactor-delete-leftover-empty-line))
 
 ;; *** safely delete empty line
 
-(defun tro-delete-leftover-empty-line ()
+(defun treefactor-delete-leftover-empty-line ()
   "Deletes empty line at point, if there is one."
 
   (unless (and (bobp) (eobp))
@@ -655,17 +676,17 @@ INBOX heading. The user transfers text from the first window to the second."
 
 ;; *** insert at bottom of buffer
 
-(defun tro-insert-to-end-of-buffer ()
-  "Add `tro-object-text' text to bottom of target buffer."
+(defun treefactor-insert-to-end-of-buffer ()
+  "Add `treefactor-object-text' text to bottom of target buffer."
 
   (widen)
-  (tro-region-ends-n-newlines 2)
-  (insert tro-object-text)
+  (treefactor-region-ends-n-newlines 2)
+  (insert treefactor-object-text)
   (save-buffer))
 
 ;; *** text inserted confirmation message
 
-(defun tro-text-inserted-to-buffer-path-message ()
+(defun treefactor-text-inserted-to-buffer-path-message ()
   "Report filename that text was inserted to.
 
 Reported path is relative to vd-root-dir or ~/."
@@ -676,6 +697,6 @@ Reported path is relative to vd-root-dir or ~/."
 
 ;; ** provide
 
-(provide 'tro)
+(provide 'treefactor)
 
-;;; tro.el ends here
+;;; treefactor.el ends here
