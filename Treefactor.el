@@ -6,7 +6,7 @@
 ;; Keywords: outlines, files, convenience
 ;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0") (org "9.2.6") (avy "0.5.0"))
 ;; URL: https://github.com/cyberthal/treefactor
-;; Version: 3.0.0
+;; Version: 3.0.1
 
 ;;; Commentary:
 
@@ -84,7 +84,7 @@ Do not set to treefactor or it will cause an infinite loop."
 ;; *** aliases
 
 (defvar treefactor-user-commands
-  (list "refile" "refile-up" "delete-this-buffer-and-file" "org-store-link-fold-drawer" "org-dired-zinks" "org-duplicate-heading-to-other-window" "org-refactor-heading"))
+  (list "throw" "up" "delete-this-buffer-and-file" "org-store-link-fold-drawer" "org-dired-zinks" "org-duplicate-heading-to-other-window" "org-refactor-heading"))
 
 (defun treefactor-defalias-1 (suffix)
   "Alias `treefactor' function SUFFIX to `treefactor-alias-prefix-1'."
