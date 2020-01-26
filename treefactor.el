@@ -6,7 +6,7 @@
 ;; Keywords: outlines, files, convenience
 ;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0") (org "9.2.6") (avy "0.5.0"))
 ;; URL: https://github.com/cyberthal/treefactor
-;; Version: 3.0.2
+;; Version: 3.1.0
 
 ;;; Commentary:
 
@@ -51,9 +51,7 @@
   "Stores the last text Treefactor killed or copied.")
 
 (defvar user-home-directory) ; Spacemacs variable
-
 (defvar isearch-string)
-
 (defvar dired-isearch-filenames)
 
 ;; *** customization
@@ -62,29 +60,38 @@
   :group 'convenience
   :group 'files)
 
+;; **** Alias prefixes
+
 (defcustom treefactor-use-alias-prefixes nil
   "Non-nil if prefix aliases should be created for user commands."
-  :type 'boolean
-  :group 'treefactor)
+  :type 'boolean)
 
 (defcustom treefactor-alias-prefix-1 "tro"
   "First prefix for aliased user commands. No dash needed.
 
 Do not set to treefactor or it will cause an infinite loop."
-  :type '(string)
-  :group 'treefactor)
+  :type 'string)
 
 (defcustom treefactor-alias-prefix-2 ""
   "Second prefix for aliased user commands. No dash needed.
 
 Do not set to treefactor or it will cause an infinite loop."
-  :type '(string)
-  :group 'treefactor)
+  :type 'string)
+
+;; **** Org Agenda
+
+(defcustom treefactor-org-agenda-dir nil
+  "Directory of variable `org-agenda-files'. Requires quotes and trailing slash."
+  :type 'directory)
+
+(defcustom treefactor-org-id-extra-dir nil
+  "Directory of variable `org-id-extra-files'. Requires quotes and trailing slash."
+  :type 'directory)
 
 ;; *** aliases
 
 (defvar treefactor-user-commands
-  (list "throw" "up" "delete-this-buffer-and-file" "org-store-link-fold-drawer" "org-dired-zinks" "org-duplicate-heading-to-other-window" "org-refactor-heading"))
+  (list "throw" "up" "delete-this-buffer-and-file" "org-store-link-fold-drawer" "org-dired-zinks" "org-duplicate-heading-to-other-window" "org-refactor-heading" "clear-org-search-scope" "refresh-org-search-scope"))
 
 (defun treefactor-defalias-1 (suffix)
   "Alias `treefactor' function SUFFIX to `treefactor-alias-prefix-1'."
@@ -617,6 +624,36 @@ INBOX heading. The user transfers text from the first window to the second."
              (org-narrow-to-subtree)
              (org-show-all '(headings))
              (org-cycle-hide-drawers 1))))
+
+;; *** Org search scope
+;; **** Clear
+
+(defun treefactor-clear-org-search-scope ()
+  "Clear `org' search scope file list."
+  (interactive)
+
+  (setq org-agenda-files nil)
+  (setq org-agenda-text-search-extra-files nil))
+
+;; **** Refresh
+
+(defun treefactor-refresh-org-search-scope ()
+  "Recursively refresh `org' search scope."
+  (interactive)
+
+  (treefactor-clear-org-search-scope)
+
+  (unless (file-directory-p treefactor-org-agenda-dir)
+    (error "Not a directory `%s'" treefactor-org-agenda-dir))
+
+  (unless (file-directory-p treefactor-org-id-extra-dir)
+    (error "Not a directory `%s'" treefactor-org-id-extra-dir))
+
+  (setq org-agenda-files
+        (directory-files-recursively treefactor-org-agenda-dir "org$"))
+
+  (setq org-agenda-text-search-extra-files
+        (directory-files-recursively treefactor-org-id-extra-dir ".org$")))
 
 ;; ** library
 
