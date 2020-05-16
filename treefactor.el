@@ -6,7 +6,7 @@
 ;; Keywords: outlines, files, convenience
 ;; Package-Requires: ((emacs "26.1") (dash "2.16.0") (f "0.20.0") (org "9.2.6") (avy "0.5.0"))
 ;; URL: https://github.com/cyberthal/treefactor
-;; Version: 3.2.1
+;; Version: 3.2.2
 
 ;;; Commentary:
 
@@ -196,9 +196,9 @@ Assume a polished document will have a level-1 near the top."
 
   (goto-char (point-min))
   (condition-case nil
-      (re-search-forward "^* ")       ; Search for a level-1 headline.
+      (progn (re-search-forward "^* ")       ; Search for a level-1 headline.
        (goto-char (point-at-bol))
-       (insert treefactor-object-text)
+       (insert treefactor-object-text))
     (error (treefactor-insert-to-end-of-buffer)))
   (save-buffer)
   (treefactor-text-inserted-to-buffer-path-message))
